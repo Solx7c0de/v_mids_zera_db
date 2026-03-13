@@ -168,4 +168,4 @@ st.markdown("""
 | Supplier Clustering | K-Means (k=3) | Segment suppliers into tiers | scikit-learn |
 | Spend Forecasting | Exponential Moving Average | Project future procurement spend | pandas + numpy |
 """)
-st.caption("Built with scikit-learn, pandas, numpy — mapped to EXL Business Analyst skill requirements")
+st.caption("Built with scikit-learn, pandas, numpy")
