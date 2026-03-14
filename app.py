@@ -16,24 +16,24 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# # Custom CSS
-# st.markdown("""
-# <style>
-#     .main-header {font-size: 2.2rem; font-weight: 700; color: #1a1a2e; margin-bottom: 0.2rem;}
-#     .sub-header {font-size: 1.1rem; color: #6c757d; margin-bottom: 1.5rem;}
-#     .metric-card {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-#         padding: 1.2rem; border-radius: 12px; color: white; text-align: center;}
-#     .metric-value {font-size: 1.8rem; font-weight: 700;}
-#     .metric-label {font-size: 0.85rem; opacity: 0.9;}
-#     .stMetric > div {background: #f8f9fa; border-radius: 10px; padding: 12px; border-left: 4px solid #667eea;}
-#     div[data-testid="stSidebar"] {background-color: #f0f2f6;}
-# </style>
-# """, unsafe_allow_html=True)
 st.markdown("""
 <style>
 /* ── Global dark-mode fix: make all text visible ── */
 [data-testid="stAppViewContainer"] {
     color: #E0E0E0;
+}
+
+/* ── Header styling ── */
+.main-header {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #E0E0E0;
+    margin-bottom: 0.2rem;
+}
+.sub-header {
+    font-size: 1.1rem;
+    color: #9CA3AF;
+    margin-bottom: 1.5rem;
 }
 
 /* ── KPI Card Styling ── */
@@ -156,16 +156,83 @@ st.markdown("""
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
 }
+
+/* ── Navigation cards ── */
+.nav-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 @st.cache_data(show_spinner="Loading procurement data...")
 def init_procurement():
     return load_all_procurement_data()
 
+
 @st.cache_data(show_spinner="Parsing meter PDFs...")
 def init_meter():
     return load_all_meter_data()
+
+
+def render_kpi_cards(proc_kpis, meter_kpis):
+    total_spend = proc_kpis.get('grand_total_spend', 0)
+    if total_spend >= 1_00_00_000:
+        spend_display = f"₹{total_spend / 1_00_00_000:.2f} Cr"
+        spend_sub = f"₹{total_spend:,.0f}"
+    elif total_spend >= 1_00_000:
+        spend_display = f"₹{total_spend / 1_00_000:.2f} L"
+        spend_sub = f"₹{total_spend:,.0f}"
+    else:
+        spend_display = f"₹{total_spend:,.0f}"
+        spend_sub = ""
+
+    line_items = proc_kpis.get('total_line_items', 0)
+    meters_tested = meter_kpis.get('total_meters_tested', 0)
+    pass_rate = meter_kpis.get('pass_rate', 0)
+    voltage_events = meter_kpis.get('total_voltage_events', 0)
+
+    passed_count = int(meters_tested * pass_rate / 100) if meters_tested > 0 else 0
+
+    cards_html = f"""
+    <div class="kpi-container">
+        <div class="kpi-card kpi-teal">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-label">Total Spend</div>
+            <div class="kpi-value">{spend_display}</div>
+            <div class="kpi-sub">{spend_sub}</div>
+        </div>
+        <div class="kpi-card kpi-blue">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-label">Line Items</div>
+            <div class="kpi-value">{line_items:,}</div>
+            <div class="kpi-sub">across 4 categories</div>
+        </div>
+        <div class="kpi-card kpi-purple">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-label">Meters Tested</div>
+            <div class="kpi-value">{meters_tested}</div>
+            <div class="kpi-sub">Session S-14</div>
+        </div>
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-label">Pass Rate</div>
+            <div class="kpi-value">{pass_rate:.0f}%</div>
+            <div class="kpi-sub">{passed_count} of {meters_tested} passed</div>
+        </div>
+        <div class="kpi-card kpi-rose">
+            <div class="kpi-icon">🔴</div>
+            <div class="kpi-label">Voltage Events</div>
+            <div class="kpi-value">{voltage_events}</div>
+            <div class="kpi-sub">from PDF extraction</div>
+        </div>
+    </div>
+    """
+    st.markdown(cards_html, unsafe_allow_html=True)
 
 
 def main():
@@ -195,61 +262,8 @@ def main():
     proc_kpis = get_procurement_summary()
     meter_kpis = get_meter_summary()
 
-def render_kpi_cards(proc_kpis, meter_kpis):
-    """Render styled KPI cards that are fully visible in dark mode."""
-
-    total_spend = proc_kpis.get('grand_total_spend', 0)
-    # Format large numbers as lakhs/crores for readability
-    if total_spend >= 1_00_00_000:
-        spend_display = f"₹{total_spend / 1_00_00_000:.2f} Cr"
-        spend_sub = f"₹{total_spend:,.0f}"
-    elif total_spend >= 1_00_000:
-        spend_display = f"₹{total_spend / 1_00_000:.2f} L"
-        spend_sub = f"₹{total_spend:,.0f}"
-    else:
-        spend_display = f"₹{total_spend:,.0f}"
-        spend_sub = ""
-
-    line_items = proc_kpis.get('total_line_items', 0)
-    meters_tested = meter_kpis.get('total_meters_tested', 0)
-    pass_rate = meter_kpis.get('pass_rate', 0)
-    voltage_events = meter_kpis.get('total_voltage_events', 0)
-
-    cards_html = f"""
-    <div class="kpi-container">
-        <div class="kpi-card kpi-teal">
-            <div class="kpi-icon">💰</div>
-            <div class="kpi-label">Total Spend</div>
-            <div class="kpi-value">{spend_display}</div>
-            <div class="kpi-sub">{spend_sub}</div>
-        </div>
-        <div class="kpi-card kpi-blue">
-            <div class="kpi-icon">📋</div>
-            <div class="kpi-label">Line Items</div>
-            <div class="kpi-value">{line_items:,}</div>
-            <div class="kpi-sub">across 4 categories</div>
-        </div>
-        <div class="kpi-card kpi-purple">
-            <div class="kpi-icon">⚡</div>
-            <div class="kpi-label">Meters Tested</div>
-            <div class="kpi-value">{meters_tested}</div>
-            <div class="kpi-sub">Session S-14</div>
-        </div>
-        <div class="kpi-card kpi-amber">
-            <div class="kpi-icon">✅</div>
-            <div class="kpi-label">Pass Rate</div>
-            <div class="kpi-value">{pass_rate:.0f}%</div>
-            <div class="kpi-sub">{meters_tested - int(meters_tested * (100 - pass_rate) / 100)} of {meters_tested} passed</div>
-        </div>
-        <div class="kpi-card kpi-rose">
-            <div class="kpi-icon">🔴</div>
-            <div class="kpi-label">Voltage Events</div>
-            <div class="kpi-value">{voltage_events}</div>
-            <div class="kpi-sub">from PDF extraction</div>
-        </div>
-    </div>
-    """
-    st.markdown(cards_html, unsafe_allow_html=True)
+    st.markdown("### 📈 Executive Overview")
+    render_kpi_cards(proc_kpis, meter_kpis)
 
     st.divider()
 
